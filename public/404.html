@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DukanBook</title>
+    <script>
+      const repoBase = '/stock';
+      const path = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+
+      if (path.startsWith(repoBase)) {
+        const route = path.slice(repoBase.length) || '/';
+        window.location.replace(`${repoBase}/#${route}${search}${hash}`);
+      } else {
+        window.location.replace(`${repoBase}/`);
+      }
+    </script>
+  </head>
+  <body></body>
+</html>

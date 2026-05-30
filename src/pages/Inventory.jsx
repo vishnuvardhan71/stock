@@ -21,7 +21,7 @@ export default function Inventory({ items, setItems, ctr, setCtr }) {
   };
 
   const initialFormState = {
-    name: '', category: '', qty: '', supplier: '', threshold: '', costPrice: '', sellPrice: ''
+    name: '', category: '', qty: '', supplier: '', threshold: '', costPrice: '0', sellPrice: ''
   };
   const [form, setForm] = useState(initialFormState);
 
@@ -98,7 +98,14 @@ export default function Inventory({ items, setItems, ctr, setCtr }) {
       {showAddForm && (
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">Add New Item</h3>
-          <form onSubmit={handleAddSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <style>
+            {`
+              .add-item-form > div:nth-child(5) {
+                display: none;
+              }
+            `}
+          </style>
+          <form onSubmit={handleAddSubmit} className="add-item-form grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input label="Name" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
             <Input label="Category" required value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
             <Input label="Quantity" type="number" required value={form.qty} onChange={e => setForm({...form, qty: e.target.value})} />
@@ -116,7 +123,17 @@ export default function Inventory({ items, setItems, ctr, setCtr }) {
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <style>
+            {`
+              .inventory-table th:nth-child(5),
+              .inventory-table td:nth-child(5),
+              .inventory-table th:nth-child(7),
+              .inventory-table td:nth-child(7) {
+                display: none;
+              }
+            `}
+          </style>
+          <table className="inventory-table w-full text-sm text-left">
             <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3">ID</th>
