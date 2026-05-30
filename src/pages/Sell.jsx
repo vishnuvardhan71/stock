@@ -4,7 +4,7 @@ import { Printer, Minus } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
 import Input from '../components/Input';
 
-export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, onPrint, onPreview }) {
+export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
   const [customer, setCustomer] = useState('');
   const [storeName, setStoreName] = useState('');
   const [gstNumber, setGstNumber] = useState('');
@@ -15,6 +15,7 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
   
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const categories = [...new Set(items.map(i => i.category))].filter(Boolean);
   const availableItems = items.filter(i => {
@@ -40,13 +41,23 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
     }
   }, [selectedItem]);
 
+  // Helper to calculate how much stock remains for an item considering what is in the cart
+  const getAvailableStock = (item) => {
+    if (!item) return 0;
+    const cartItem = cart.find(c => c.itemId === item.id);
+    const cartQty = cartItem ? parseFloat(cartItem.qty) : 0;
+    return Math.max(0, parseFloat(item.qty) - cartQty);
+  };
+
   const handleAddToCart = (e) => {
     e.preventDefault();
     if (!selectedItem) return;
     
     const qty = parseFloat(sellQty);
     if (qty <= 0) return alert("Quantity must be greater than 0");
-    if (qty > parseFloat(selectedItem.qty)) return alert("Not enough stock available!");
+    
+    const availableStock = getAvailableStock(selectedItem);
+    if (qty > availableStock) return alert("Not enough stock available!");
 
     const existingCartItemIndex = cart.findIndex(c => c.itemId === selectedItemId);
     let newCart = [...cart];
@@ -67,8 +78,6 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
       });
     }
 
-    setItems(items.map(i => i.id === selectedItem.id ? { ...i, qty: parseFloat(i.qty) - qty } : i));
-    
     setCart(newCart);
     setSelectedItemId('');
     setSellQty('');
@@ -76,8 +85,6 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
   };
 
   const removeFromCart = (index) => {
-    const itemToRemove = cart[index];
-    setItems(items.map(i => i.id === itemToRemove.itemId ? { ...i, qty: parseFloat(i.qty) + itemToRemove.qty } : i));
     setCart(cart.filter((_, i) => i !== index));
   };
 
@@ -85,15 +92,10 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
   const discountAmt = parseFloat(discount) || 0;
   const grandTotal = Math.max(0, subtotal - discountAmt);
 
-  const processSale = (isAutoPrint) => {
+  const processSale = async (isAutoPrint) => {
     if (cart.length === 0) return alert("Cart is empty");
     
-    const newIdNum = ctr.sales + 1;
-    const billId = `BILL${String(newIdNum).padStart(4, '0')}`;
-
     const newSale = {
-      id: billId,
-      date: new Date().toISOString(),
       storeName: storeName,
       gstNumber: gstNumber,
       customer: customer || 'Walk-in Customer',
@@ -103,19 +105,26 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
       grandTotal
     };
 
-    setSales([...sales, newSale]);
-    setCtr({ ...ctr, sales: newIdNum });
+    setSubmitting(true);
+    try {
+      const processed = await onProcessSale(newSale);
+      
+      // Reset cart
+      setCustomer('');
+      setCart([]);
+      setDiscount('');
 
-    // Reset cart
-    setCustomer('');
-    setCart([]);
-    setDiscount('');
-
-    if (isAutoPrint) {
-      onPrint(newSale);
-    } else {
-      if (onPreview) onPreview(newSale);
-      else onPrint(newSale);
+      if (isAutoPrint) {
+        onPrint(processed);
+      } else {
+        if (onPreview) onPreview(processed);
+        else onPrint(processed);
+      }
+    } catch (err) {
+      console.error("Failed to process transaction:", err);
+      alert("Error saving transaction: " + err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -132,7 +141,7 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm"
                   value={selectedCategory}
                   onChange={handleCategoryChange}
                 >
@@ -146,17 +155,18 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Select Item</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm"
                   value={selectedItemId}
                   onChange={e => setSelectedItemId(e.target.value)}
                   required
                 >
                   <option value="">-- Select Item --</option>
                   {availableItems.map(i => {
-                    const isOutOfStock = parseFloat(i.qty) <= 0;
+                    const availableStock = getAvailableStock(i);
+                    const isOutOfStock = availableStock <= 0;
                     return (
                       <option key={i.id} value={i.id} disabled={isOutOfStock}>
-                        {i.name} {isOutOfStock ? '(Out of stock)' : `(${i.qty} available)`}
+                        {i.name} {isOutOfStock ? '(Out of stock)' : `(${availableStock} available)`}
                       </option>
                     )
                   })}
@@ -165,9 +175,9 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
             </div>
             
             {selectedItem && (
-              <div className="p-3 bg-indigo-50 text-indigo-800 rounded-lg text-sm flex justify-between items-center border border-indigo-100">
+              <div className="p-3 bg-indigo-50 text-indigo-800 rounded-lg text-sm flex justify-between items-center border border-indigo-100 animate-pulse">
                 <span>Available Stock:</span>
-                <span className="font-bold">{selectedItem.qty}</span>
+                <span className="font-bold">{getAvailableStock(selectedItem)}</span>
               </div>
             )}
 
@@ -176,7 +186,11 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
               <Input label="Selling Price (₹)" type="number" step="0.01" required value={sellPrice} onChange={e => setSellPrice(e.target.value)} />
             </div>
 
-            <button type="submit" disabled={!selectedItem} className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <button 
+              type="submit" 
+              disabled={!selectedItem || getAvailableStock(selectedItem) <= 0} 
+              className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
+            >
               Add to Bill
             </button>
           </form>
@@ -189,8 +203,8 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
           <h2 className="text-lg font-semibold mb-4 border-b pb-2">Current Bill</h2>
           
           <div className="flex-1 overflow-x-auto min-h-[200px]">
-            <table className="w-full text-sm text-left border-collapse">
-              <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+            <table className="w-full text-sm text-left border-collapse border-b border-gray-100">
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-3 py-2">Item</th>
                   <th className="px-3 py-2 text-right">Qty</th>
@@ -201,7 +215,7 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
               </thead>
               <tbody>
                 {cart.map((c, i) => (
-                  <tr key={i} className="border-b border-gray-100 last:border-0">
+                  <tr key={i} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                     <td className="px-3 py-3 font-medium">{c.name}</td>
                     <td className="px-3 py-3 text-right">{c.qty}</td>
                     <td className="px-3 py-3 text-right">{formatCurrency(c.rate)}</td>
@@ -247,19 +261,19 @@ export default function Sell({ items, setItems, sales, setSales, ctr, setCtr, on
             <div className="flex gap-4 mt-4">
               <button 
                 onClick={() => processSale(false)}
-                disabled={cart.length === 0}
-                className="flex-1 flex items-center justify-center gap-2 bg-slate-600 text-white py-3 rounded-xl hover:bg-slate-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500 shadow-sm"
+                disabled={cart.length === 0 || submitting}
+                className="flex-1 flex items-center justify-center gap-2 bg-slate-600 text-white py-3 rounded-xl hover:bg-slate-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500 shadow-sm text-sm font-semibold"
               >
-                <span>Preview & Save</span>
+                <span>{submitting ? 'Saving...' : 'Preview & Save'}</span>
               </button>
               
               <button 
                 onClick={() => processSale(true)}
-                disabled={cart.length === 0}
-                className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl hover:bg-emerald-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500 shadow-sm"
+                disabled={cart.length === 0 || submitting}
+                className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl hover:bg-emerald-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500 shadow-sm text-sm font-semibold"
               >
-                <Printer className="h-5 w-5" />
-                <span>Confirm & Print</span>
+                <Printer className="h-4 w-4" />
+                <span>{submitting ? 'Printing...' : 'Confirm & Print'}</span>
               </button>
             </div>
           </div>

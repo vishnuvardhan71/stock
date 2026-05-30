@@ -1,15 +1,16 @@
 // DukanBook - Inventory Page
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
 import Input from '../components/Input';
 
-export default function Inventory({ items, setItems, ctr, setCtr }) {
+export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddForm, setShowAddForm] = useState(false);
   const [search, setSearch] = useState('');
   const [editingItem, setEditingItem] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const inventoryFilter = searchParams.get('filter') || 'all';
   const setInventoryFilter = (filter) => {
@@ -25,40 +26,68 @@ export default function Inventory({ items, setItems, ctr, setCtr }) {
   };
   const [form, setForm] = useState(initialFormState);
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    const newIdNum = ctr.items + 1;
-    const newId = `ITEM${String(newIdNum).padStart(4, '0')}`;
-    
-    const newItem = {
-      id: newId,
-      ...form,
-      qty: form.qty || 0,
-      dateAdded: new Date().toISOString()
-    };
-
-    setItems([...items, newItem]);
-    setCtr({ ...ctr, items: newIdNum });
-    setForm(initialFormState);
-    setShowAddForm(false);
+    setSubmitting(true);
+    try {
+      const newItemPayload = {
+        name: form.name,
+        category: form.category,
+        qty: parseFloat(form.qty) || 0,
+        threshold: parseFloat(form.threshold) || 0,
+        costPrice: parseFloat(form.costPrice) || 0,
+        sellPrice: parseFloat(form.sellPrice) || 0,
+        supplier: form.supplier || ''
+      };
+      
+      await onAdd(newItemPayload);
+      setForm(initialFormState);
+      setShowAddForm(false);
+    } catch (err) {
+      console.error("Failed to add inventory item:", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
-    setItems(items.map(i => i.id === editingItem.id ? editingItem : i));
-    setEditingItem(null);
+    setSubmitting(true);
+    try {
+      await onUpdate(editingItem.id, {
+        name: editingItem.name,
+        category: editingItem.category,
+        qty: parseFloat(editingItem.qty) || 0,
+        threshold: parseFloat(editingItem.threshold) || 0,
+        costPrice: parseFloat(editingItem.costPrice) || 0,
+        sellPrice: parseFloat(editingItem.sellPrice) || 0,
+        supplier: editingItem.supplier || ''
+      });
+      setEditingItem(null);
+    } catch (err) {
+      console.error("Failed to update inventory item:", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
-      setItems(items.filter(i => i.id !== id));
+      try {
+        await onDelete(id);
+      } catch (err) {
+        console.error("Failed to delete inventory item:", err);
+      }
     }
   };
 
   const filteredItems = items.filter(i => {
-    const matchesSearch = i.name.toLowerCase().includes(search.toLowerCase()) || 
-                          i.id.toLowerCase().includes(search.toLowerCase()) ||
-                          i.category.toLowerCase().includes(search.toLowerCase());
+    const nameMatch = i.name ? i.name.toLowerCase().includes(search.toLowerCase()) : false;
+    const idMatch = i.id ? i.id.toLowerCase().includes(search.toLowerCase()) : false;
+    const catMatch = i.category ? i.category.toLowerCase().includes(search.toLowerCase()) : false;
+
+    const matchesSearch = nameMatch || idMatch || catMatch;
+    
     let matchesFilter = true;
     if (inventoryFilter === 'low') matchesFilter = parseFloat(i.qty) > 0 && parseFloat(i.qty) < parseFloat(i.threshold);
     if (inventoryFilter === 'out') matchesFilter = parseFloat(i.qty) <= 0;
@@ -108,14 +137,20 @@ export default function Inventory({ items, setItems, ctr, setCtr }) {
           <form onSubmit={handleAddSubmit} className="add-item-form grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input label="Name" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
             <Input label="Category" required value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
-            <Input label="Quantity" type="number" required value={form.qty} onChange={e => setForm({...form, qty: e.target.value})} />
-            <Input label="Threshold" type="number" required value={form.threshold} onChange={e => setForm({...form, threshold: e.target.value})} />
+            <Input label="Quantity" type="number" step="any" required value={form.qty} onChange={e => setForm({...form, qty: e.target.value})} />
+            <Input label="Threshold" type="number" step="any" required value={form.threshold} onChange={e => setForm({...form, threshold: e.target.value})} />
             <Input label="Cost Price (₹)" type="number" step="0.01" required value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} />
             <Input label="Selling Price (₹)" type="number" step="0.01" required value={form.sellPrice} onChange={e => setForm({...form, sellPrice: e.target.value})} />
             <Input label="Supplier (Optional)" value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} />
             
             <div className="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end mt-2">
-              <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">Save Item</button>
+              <button 
+                type="submit" 
+                disabled={submitting}
+                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400"
+              >
+                {submitting ? 'Saving...' : 'Save Item'}
+              </button>
             </div>
           </form>
         </div>
@@ -204,15 +239,21 @@ export default function Inventory({ items, setItems, ctr, setCtr }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label="Name" required value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
                 <Input label="Category" required value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})} />
-                <Input label="Quantity" type="number" required value={editingItem.qty} onChange={e => setEditingItem({...editingItem, qty: e.target.value})} />
-                <Input label="Threshold" type="number" required value={editingItem.threshold} onChange={e => setEditingItem({...editingItem, threshold: e.target.value})} />
+                <Input label="Quantity" type="number" step="any" required value={editingItem.qty} onChange={e => setEditingItem({...editingItem, qty: e.target.value})} />
+                <Input label="Threshold" type="number" step="any" required value={editingItem.threshold} onChange={e => setEditingItem({...editingItem, threshold: e.target.value})} />
                 <Input label="Cost Price (₹)" type="number" step="0.01" required value={editingItem.costPrice} onChange={e => setEditingItem({...editingItem, costPrice: e.target.value})} />
                 <Input label="Selling Price (₹)" type="number" step="0.01" required value={editingItem.sellPrice} onChange={e => setEditingItem({...editingItem, sellPrice: e.target.value})} />
-                <Input label="Supplier" value={editingItem.supplier} onChange={e => setEditingItem({...editingItem, supplier: e.target.value})} />
+                <Input label="Supplier" value={editingItem.supplier || ''} onChange={e => setEditingItem({...editingItem, supplier: e.target.value})} />
               </div>
               <div className="mt-6 flex justify-end gap-3">
                 <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg border border-indigo-700">Save Changes</button>
+                <button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg border border-indigo-700 disabled:bg-indigo-400"
+                >
+                  {submitting ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
             </form>
           </div>
