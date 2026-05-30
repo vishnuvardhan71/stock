@@ -1,29 +1,40 @@
-// DukanBook - Main App Shell with Routing
+// DukanBook - Main App Shell with Routing & Authentication
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, History } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, History, LogOut } from 'lucide-react';
 import './utils/helpers'; // Initialize window.storage
 
 import BillModal from './components/BillModal';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Sell from './pages/Sell';
 import HistoryPage from './pages/History';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [items, setItems] = useState([]);
   const [sales, setSales] = useState([]);
   const [ctr, setCtr] = useState({ items: 0, sales: 0 });
 
+  // Check auth on mount
+  useEffect(() => {
+    const auth = window.storage.sessionGet('db_auth');
+    if (auth && auth.loggedIn) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
   // Initialize data
   useEffect(() => {
+    if (!isAuthenticated) return;
     const sm_items = window.storage.get('sm_items') || [];
     const sm_sales = window.storage.get('sm_sales') || [];
     const sm_ctr = window.storage.get('sm_ctr') || { items: 0, sales: 0 };
     setItems(sm_items);
     setSales(sm_sales);
     setCtr(sm_ctr);
-  }, []);
+  }, [isAuthenticated]);
 
   // Save on change
   useEffect(() => {
@@ -45,6 +56,16 @@ export default function App() {
       }, 100);
     }
   };
+
+  const handleLogout = () => {
+    window.storage.sessionRemove('db_auth');
+    setIsAuthenticated(false);
+  };
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -80,28 +101,38 @@ export default function App() {
           <Package className="h-8 w-8" />
           <h1 className="text-2xl font-bold tracking-tight">DukanBook</h1>
         </div>
-        <nav className="flex space-x-1">
-          {navItems.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <NavLink
-                key={tab.to}
-                to={tab.to}
-                end={tab.to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                  }`
-                }
-              >
-                <Icon className="h-5 w-5" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-4">
+          <nav className="flex space-x-1">
+            {navItems.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <NavLink
+                  key={tab.to}
+                  to={tab.to}
+                  end={tab.to === '/'}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                      isActive
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                    }`
+                  }
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors border border-transparent hover:border-red-200"
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
