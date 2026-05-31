@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Printer, Minus } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
+import { getUniqueCategories, categoriesMatch } from '../utils/categoryUtils';
 import Input from '../components/Input';
 
 export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
@@ -17,9 +18,9 @@ export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
   const [discount, setDiscount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const categories = [...new Set(items.map(i => i.category))].filter(Boolean);
+  const categories = getUniqueCategories(items);
   const availableItems = items.filter(i => {
-    if (selectedCategory && i.category !== selectedCategory) return false;
+    if (selectedCategory && !categoriesMatch(i.category, selectedCategory)) return false;
     return true;
   });
 

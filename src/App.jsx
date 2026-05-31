@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { LayoutDashboard, Package, ShoppingCart, History, LogOut, AlertTriangle, Info, RefreshCw } from 'lucide-react';
+import { getUniqueCategories } from './utils/categoryUtils';
+import CategoryNavMenu from './components/CategoryNavMenu';
 import './utils/helpers'; // Initialize window.storage
 
 import { isSupabaseConfigured } from './utils/supabaseClient';
@@ -20,6 +22,9 @@ export default function App() {
   const [sales, setSales] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState('');
+
+  const categories = getUniqueCategories(items);
 
   // Check auth on mount
   useEffect(() => {
@@ -340,6 +345,11 @@ export default function App() {
               );
             })}
           </nav>
+          <CategoryNavMenu
+            categories={categories}
+            selectedCategory={categoryFilter}
+            onSelectCategory={setCategoryFilter}
+          />
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors border border-transparent hover:border-red-200"
@@ -360,6 +370,8 @@ export default function App() {
             element={
               <Inventory 
                 items={items} 
+                categoryFilter={categoryFilter}
+                onClearCategoryFilter={() => setCategoryFilter('')}
                 onAdd={handleAddItem} 
                 onUpdate={handleUpdateItem} 
                 onDelete={handleDeleteItem} 

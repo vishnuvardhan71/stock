@@ -1,16 +1,31 @@
 // DukanBook - Inventory Page
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
 import { formatCurrency, formatDisplayDate, toDateInputValue } from '../utils/helpers';
+import {
+  getUniqueCategories,
+  resolveCategoryForSave,
+  categoriesMatch,
+} from '../utils/categoryUtils';
 import Input from '../components/Input';
+import CategoryInput from '../components/CategoryInput';
 
-export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
+export default function Inventory({ items, categoryFilter = '', onClearCategoryFilter, onAdd, onUpdate, onDelete }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddForm, setShowAddForm] = useState(false);
   const [search, setSearch] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!editingItem) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [editingItem]);
 
   const inventoryFilter = searchParams.get('filter') || 'all';
   const setInventoryFilter = (filter) => {
@@ -26,9 +41,11 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
     manufactureDate: '', expiryDate: ''
   };
 
+  const existingCategories = getUniqueCategories(items);
+
   const buildProductPayload = (data) => ({
     name: data.name,
-    category: data.category,
+    category: resolveCategoryForSave(data.category, existingCategories),
     qty: parseFloat(data.qty) || 0,
     threshold: parseFloat(data.threshold) || 0,
     costPrice: parseFloat(data.costPrice) || 0,
@@ -86,12 +103,25 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
     let matchesFilter = true;
     if (inventoryFilter === 'low') matchesFilter = parseFloat(i.qty) > 0 && parseFloat(i.qty) < parseFloat(i.threshold);
     if (inventoryFilter === 'out') matchesFilter = parseFloat(i.qty) <= 0;
+
+    const matchesCategory =
+      !categoryFilter || categoriesMatch(i.category, categoryFilter);
     
-    return matchesSearch && matchesFilter;
+    return matchesSearch && matchesFilter && matchesCategory;
   });
 
   return (
     <div className="space-y-6">
+      {categoryFilter && (
+        <div className="bg-violet-50 text-violet-800 px-4 py-3 rounded-lg flex justify-between items-center border border-violet-100">
+          <span>
+            Showing items in category: <strong>{categoryFilter}</strong>
+          </span>
+          <button type="button" onClick={onClearCategoryFilter} className="text-sm underline hover:text-violet-950">
+            Clear category
+          </button>
+        </div>
+      )}
       {inventoryFilter !== 'all' && (
         <div className="bg-indigo-50 text-indigo-700 px-4 py-3 rounded-lg flex justify-between items-center border border-indigo-100">
           <span>
@@ -130,10 +160,15 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
           <form onSubmit={handleAddSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Input label="Name" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-              <Input label="Category" required value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
+              <CategoryInput
+                label="Category"
+                required
+                value={form.category}
+                onChange={(category) => setForm({ ...form, category })}
+                existingCategories={existingCategories}
+              />
               <Input label="Quantity" type="number" step="any" required value={form.qty} onChange={e => setForm({...form, qty: e.target.value})} />
               <Input label="Threshold" type="number" step="any" required value={form.threshold} onChange={e => setForm({...form, threshold: e.target.value})} />
-              <Input label="Cost Price (₹)" type="number" step="0.01" required value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} />
               <Input label="Selling Price (₹)" type="number" step="0.01" required value={form.sellPrice} onChange={e => setForm({...form, sellPrice: e.target.value})} />
               <Input label="Supplier (Optional)" required={false} value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} />
             </div>
@@ -201,7 +236,7 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map(item => {
+              {filteredItems.map((item) => {
                 const margin = ((parseFloat(item.sellPrice) - parseFloat(item.costPrice)) / parseFloat(item.costPrice)) * 100;
                 let statusBadge;
                 if (parseFloat(item.qty) <= 0) statusBadge = <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Out of Stock</span>;
@@ -242,7 +277,7 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
                       </div>
                     </td>
                   </tr>
-                )
+                );
               })}
               {filteredItems.length === 0 && (
                 <tr>
@@ -256,53 +291,76 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
 
       {/* Edit Modal */}
       {editingItem && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={() => setEditingItem(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold">Edit Item: {editingItem.id}</h3>
-              <button onClick={() => setEditingItem(null)} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
-            </div>
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="Name" required value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
-                <Input label="Category" required value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})} />
-                <Input label="Quantity" type="number" step="any" required value={editingItem.qty} onChange={e => setEditingItem({...editingItem, qty: e.target.value})} />
-                <Input label="Threshold" type="number" step="any" required value={editingItem.threshold} onChange={e => setEditingItem({...editingItem, threshold: e.target.value})} />
-                <Input label="Cost Price (₹)" type="number" step="0.01" required value={editingItem.costPrice} onChange={e => setEditingItem({...editingItem, costPrice: e.target.value})} />
-                <Input label="Selling Price (₹)" type="number" step="0.01" required value={editingItem.sellPrice} onChange={e => setEditingItem({...editingItem, sellPrice: e.target.value})} />
-                <Input label="Supplier (Optional)" required={false} value={editingItem.supplier || ''} onChange={e => setEditingItem({...editingItem, supplier: e.target.value})} />
-              </div>
-
-              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-700 mb-3">Product dates <span className="font-normal text-gray-500">(optional — leave blank if not needed)</span></p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Manufacture Date"
-                    type="date"
-                    required={false}
-                    value={editingItem.manufactureDate || ''}
-                    onChange={e => setEditingItem({ ...editingItem, manufactureDate: e.target.value })}
-                  />
-                  <Input
-                    label="Expiry Date"
-                    type="date"
-                    required={false}
-                    value={editingItem.expiryDate || ''}
-                    onChange={e => setEditingItem({ ...editingItem, expiryDate: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end gap-3">
-                <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">Cancel</button>
-                <button 
-                  type="submit" 
-                  disabled={submitting}
-                  className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg border border-indigo-700 disabled:bg-indigo-400"
-                >
-                  {submitting ? 'Saving...' : 'Save Changes'}
+        <div className="fixed inset-0 z-50" role="presentation">
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+            onClick={() => setEditingItem(null)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div
+              className="pointer-events-auto bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-item-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="shrink-0 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="edit-item-title" className="text-lg font-bold">Edit Item: {editingItem.id}</h3>
+                <button type="button" onClick={() => setEditingItem(null)} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-            </form>
+              <form onSubmit={handleEditSubmit} className="flex flex-col min-h-0 flex-1">
+                <div className="overflow-y-auto overscroll-contain p-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input label="Name" required value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
+                    <CategoryInput
+                      label="Category"
+                      required
+                      value={editingItem.category || ''}
+                      onChange={(category) => setEditingItem({ ...editingItem, category })}
+                      existingCategories={existingCategories}
+                    />
+                    <Input label="Quantity" type="number" step="any" required value={editingItem.qty} onChange={e => setEditingItem({...editingItem, qty: e.target.value})} />
+                    <Input label="Threshold" type="number" step="any" required value={editingItem.threshold} onChange={e => setEditingItem({...editingItem, threshold: e.target.value})} />
+                    <Input label="Cost Price (₹)" type="number" step="0.01" required value={editingItem.costPrice} onChange={e => setEditingItem({...editingItem, costPrice: e.target.value})} />
+                    <Input label="Selling Price (₹)" type="number" step="0.01" required value={editingItem.sellPrice} onChange={e => setEditingItem({...editingItem, sellPrice: e.target.value})} />
+                    <Input label="Supplier (Optional)" required={false} value={editingItem.supplier || ''} onChange={e => setEditingItem({...editingItem, supplier: e.target.value})} />
+                  </div>
+
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+                    <p className="text-sm font-medium text-gray-700 mb-3">Product dates <span className="font-normal text-gray-500">(optional — leave blank if not needed)</span></p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Manufacture Date"
+                        type="date"
+                        required={false}
+                        value={editingItem.manufactureDate || ''}
+                        onChange={e => setEditingItem({ ...editingItem, manufactureDate: e.target.value })}
+                      />
+                      <Input
+                        label="Expiry Date"
+                        type="date"
+                        required={false}
+                        value={editingItem.expiryDate || ''}
+                        onChange={e => setEditingItem({ ...editingItem, expiryDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="shrink-0 px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white rounded-b-xl">
+                  <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">Cancel</button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg border border-indigo-700 disabled:bg-indigo-400"
+                  >
+                    {submitting ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
