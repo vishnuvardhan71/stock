@@ -22,3 +22,17 @@ if (typeof window.storage === 'undefined') {
 }
 
 export const formatCurrency = (amount) => `₹${parseFloat(amount).toFixed(2)}`;
+
+/** Normalize DB/local date values for date inputs (YYYY-MM-DD). */
+export const toDateInputValue = (value) => {
+  if (!value) return '';
+  const s = String(value);
+  return s.length >= 10 ? s.slice(0, 10) : s;
+};
+
+export const formatDisplayDate = (value) => {
+  if (!value) return '—';
+  const date = new Date(`${toDateInputValue(value)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};

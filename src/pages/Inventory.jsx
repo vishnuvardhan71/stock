@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
-import { formatCurrency } from '../utils/helpers';
+import { formatCurrency, formatDisplayDate, toDateInputValue } from '../utils/helpers';
 import Input from '../components/Input';
 
 export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
@@ -22,25 +22,28 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
   };
 
   const initialFormState = {
-    name: '', category: '', qty: '', supplier: '', threshold: '', costPrice: '0', sellPrice: ''
+    name: '', category: '', qty: '', supplier: '', threshold: '', costPrice: '0', sellPrice: '',
+    manufactureDate: '', expiryDate: ''
   };
+
+  const buildProductPayload = (data) => ({
+    name: data.name,
+    category: data.category,
+    qty: parseFloat(data.qty) || 0,
+    threshold: parseFloat(data.threshold) || 0,
+    costPrice: parseFloat(data.costPrice) || 0,
+    sellPrice: parseFloat(data.sellPrice) || 0,
+    supplier: data.supplier || '',
+    manufactureDate: data.manufactureDate?.trim() || null,
+    expiryDate: data.expiryDate?.trim() || null
+  });
   const [form, setForm] = useState(initialFormState);
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const newItemPayload = {
-        name: form.name,
-        category: form.category,
-        qty: parseFloat(form.qty) || 0,
-        threshold: parseFloat(form.threshold) || 0,
-        costPrice: parseFloat(form.costPrice) || 0,
-        sellPrice: parseFloat(form.sellPrice) || 0,
-        supplier: form.supplier || ''
-      };
-      
-      await onAdd(newItemPayload);
+      await onAdd(buildProductPayload(form));
       setForm(initialFormState);
       setShowAddForm(false);
     } catch (err) {
@@ -54,15 +57,7 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await onUpdate(editingItem.id, {
-        name: editingItem.name,
-        category: editingItem.category,
-        qty: parseFloat(editingItem.qty) || 0,
-        threshold: parseFloat(editingItem.threshold) || 0,
-        costPrice: parseFloat(editingItem.costPrice) || 0,
-        sellPrice: parseFloat(editingItem.sellPrice) || 0,
-        supplier: editingItem.supplier || ''
-      });
+      await onUpdate(editingItem.id, buildProductPayload(editingItem));
       setEditingItem(null);
     } catch (err) {
       console.error("Failed to update inventory item:", err);
@@ -142,6 +137,8 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
             <Input label="Cost Price (₹)" type="number" step="0.01" required value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} />
             <Input label="Selling Price (₹)" type="number" step="0.01" required value={form.sellPrice} onChange={e => setForm({...form, sellPrice: e.target.value})} />
             <Input label="Supplier (Optional)" value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} />
+            <Input label="Manufacture Date (Optional)" type="date" value={form.manufactureDate} onChange={e => setForm({...form, manufactureDate: e.target.value})} />
+            <Input label="Expiry Date (Optional)" type="date" value={form.expiryDate} onChange={e => setForm({...form, expiryDate: e.target.value})} />
             
             <div className="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end mt-2">
               <button 
@@ -160,10 +157,10 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
         <div className="overflow-x-auto">
           <style>
             {`
-              .inventory-table th:nth-child(5),
-              .inventory-table td:nth-child(5),
               .inventory-table th:nth-child(7),
-              .inventory-table td:nth-child(7) {
+              .inventory-table td:nth-child(7),
+              .inventory-table th:nth-child(9),
+              .inventory-table td:nth-child(9) {
                 display: none;
               }
             `}
@@ -174,6 +171,8 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3">Mfg Date</th>
+                <th className="px-4 py-3">Expiry</th>
                 <th className="px-4 py-3 text-right">Stock</th>
                 <th className="px-4 py-3 text-right">Cost ₹</th>
                 <th className="px-4 py-3 text-right">Sell ₹</th>
@@ -195,6 +194,8 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">{item.id}</td>
                     <td className="px-4 py-3 font-medium">{item.name}</td>
                     <td className="px-4 py-3 text-gray-500">{item.category}</td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDisplayDate(item.manufactureDate)}</td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDisplayDate(item.expiryDate)}</td>
                     <td className="px-4 py-3 text-right">
                       <span className="font-medium">{item.qty}</span>
                     </td>
@@ -206,7 +207,14 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
                     <td className="px-4 py-3">{statusBadge}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex justify-center gap-2">
-                        <button onClick={() => setEditingItem(item)} className="p-1 text-indigo-600 hover:bg-indigo-50 rounded border border-transparent hover:border-indigo-200">
+                        <button
+                          onClick={() => setEditingItem({
+                            ...item,
+                            manufactureDate: toDateInputValue(item.manufactureDate),
+                            expiryDate: toDateInputValue(item.expiryDate)
+                          })}
+                          className="p-1 text-indigo-600 hover:bg-indigo-50 rounded border border-transparent hover:border-indigo-200"
+                        >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button onClick={() => handleDelete(item.id)} className="p-1 text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200">
@@ -219,7 +227,7 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
               })}
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan="9" className="px-4 py-8 text-center text-gray-500">No items found.</td>
+                  <td colSpan="11" className="px-4 py-8 text-center text-gray-500">No items found.</td>
                 </tr>
               )}
             </tbody>
@@ -244,6 +252,8 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
                 <Input label="Cost Price (₹)" type="number" step="0.01" required value={editingItem.costPrice} onChange={e => setEditingItem({...editingItem, costPrice: e.target.value})} />
                 <Input label="Selling Price (₹)" type="number" step="0.01" required value={editingItem.sellPrice} onChange={e => setEditingItem({...editingItem, sellPrice: e.target.value})} />
                 <Input label="Supplier" value={editingItem.supplier || ''} onChange={e => setEditingItem({...editingItem, supplier: e.target.value})} />
+                <Input label="Manufacture Date (Optional)" type="date" value={editingItem.manufactureDate || ''} onChange={e => setEditingItem({...editingItem, manufactureDate: e.target.value})} />
+                <Input label="Expiry Date (Optional)" type="date" value={editingItem.expiryDate || ''} onChange={e => setEditingItem({...editingItem, expiryDate: e.target.value})} />
               </div>
               <div className="mt-6 flex justify-end gap-3">
                 <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">Cancel</button>

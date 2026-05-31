@@ -13,6 +13,8 @@ const mapProductToClient = (row) => {
     costPrice: row.cost_price !== null ? parseFloat(row.cost_price) : 0,
     sellPrice: row.sell_price !== null ? parseFloat(row.sell_price) : 0,
     supplier: row.supplier || '',
+    manufactureDate: row.manufacture_date || null,
+    expiryDate: row.expiry_date || null,
     dateAdded: row.date_added
   };
 };
@@ -27,7 +29,9 @@ const mapProductToDB = (item) => {
     threshold: parseFloat(item.threshold) || 0,
     cost_price: parseFloat(item.costPrice) || 0,
     sell_price: parseFloat(item.sellPrice) || 0,
-    supplier: item.supplier || null
+    supplier: item.supplier || null,
+    manufacture_date: item.manufactureDate?.trim() || null,
+    expiry_date: item.expiryDate?.trim() || null
   };
 };
 

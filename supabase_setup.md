@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS products (
   cost_price NUMERIC NOT NULL DEFAULT 0,
   sell_price NUMERIC NOT NULL DEFAULT 0,
   supplier TEXT,
+  manufacture_date DATE,
+  expiry_date DATE,
   date_added TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -89,3 +91,40 @@ WITH CHECK (true);
 ## Step 4: Run the Application
 1. Run `npm run dev` to start the development server.
 2. The application will automatically detect the `.env` variables, connect to your Supabase project, and migrate/fetch the product inventory!
+
+---
+
+## Adding manufacture & expiry dates to an **existing** database
+
+If you already created the `products` table **before** these columns existed, follow these steps. Existing product rows are **not** deleted; new columns start empty (`NULL`) until you edit items in the app.
+
+### Step A: Open the SQL Editor
+1. Log in at [supabase.com](https://supabase.com) and open your **DukanBook** project.
+2. In the left sidebar, click **SQL Editor**.
+3. Click **New query**.
+
+### Step B: Add the two optional columns
+4. Paste this script (safe to run more than once):
+
+```sql
+ALTER TABLE products
+  ADD COLUMN IF NOT EXISTS manufacture_date DATE,
+  ADD COLUMN IF NOT EXISTS expiry_date DATE;
+```
+
+5. Click **Run** (bottom right).
+6. Confirm success: you should see a message like `Success. No rows returned`.
+
+### Step C: Verify the columns
+7. In the sidebar, open **Table Editor** → **products**.
+8. Confirm you see **manufacture_date** and **expiry_date** columns.
+9. Existing rows should show `NULL` in both columns until you set dates in the app.
+
+### Step D: Refresh the app
+10. Restart or refresh your local app (`npm run dev`) if it was already running.
+11. Open **Inventory** → **Edit** on any item and optionally set **Manufacture Date** / **Expiry Date**, then save.
+
+**Notes:**
+- Both columns are **optional** (`DATE`, nullable). Leave blank in the app when not needed.
+- No change is required on the `sales` table.
+- If you deploy to GitHub Pages, rebuild after pulling the app changes; the database migration is only done once in Supabase.
