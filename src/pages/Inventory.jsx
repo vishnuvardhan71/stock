@@ -111,7 +111,12 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
           onChange={(e) => setSearch(e.target.value)}
         />
         <button 
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => {
+            if (showAddForm) {
+              setForm(initialFormState);
+            }
+            setShowAddForm(!showAddForm);
+          }}
           className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shrink-0 ml-4"
         >
           {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -122,25 +127,38 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
       {showAddForm && (
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">Add New Item</h3>
-          <style>
-            {`
-              .add-item-form > div:nth-child(5) {
-                display: none;
-              }
-            `}
-          </style>
-          <form onSubmit={handleAddSubmit} className="add-item-form grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Input label="Name" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-            <Input label="Category" required value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
-            <Input label="Quantity" type="number" step="any" required value={form.qty} onChange={e => setForm({...form, qty: e.target.value})} />
-            <Input label="Threshold" type="number" step="any" required value={form.threshold} onChange={e => setForm({...form, threshold: e.target.value})} />
-            <Input label="Cost Price (₹)" type="number" step="0.01" required value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} />
-            <Input label="Selling Price (₹)" type="number" step="0.01" required value={form.sellPrice} onChange={e => setForm({...form, sellPrice: e.target.value})} />
-            <Input label="Supplier (Optional)" value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} />
-            <Input label="Manufacture Date (Optional)" type="date" value={form.manufactureDate} onChange={e => setForm({...form, manufactureDate: e.target.value})} />
-            <Input label="Expiry Date (Optional)" type="date" value={form.expiryDate} onChange={e => setForm({...form, expiryDate: e.target.value})} />
-            
-            <div className="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end mt-2">
+          <form onSubmit={handleAddSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Input label="Name" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+              <Input label="Category" required value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
+              <Input label="Quantity" type="number" step="any" required value={form.qty} onChange={e => setForm({...form, qty: e.target.value})} />
+              <Input label="Threshold" type="number" step="any" required value={form.threshold} onChange={e => setForm({...form, threshold: e.target.value})} />
+              <Input label="Cost Price (₹)" type="number" step="0.01" required value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} />
+              <Input label="Selling Price (₹)" type="number" step="0.01" required value={form.sellPrice} onChange={e => setForm({...form, sellPrice: e.target.value})} />
+              <Input label="Supplier (Optional)" required={false} value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} />
+            </div>
+
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+              <p className="text-sm font-medium text-gray-700 mb-3">Product dates <span className="font-normal text-gray-500">(optional — leave blank if not needed)</span></p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Manufacture Date"
+                  type="date"
+                  required={false}
+                  value={form.manufactureDate}
+                  onChange={e => setForm({ ...form, manufactureDate: e.target.value })}
+                />
+                <Input
+                  label="Expiry Date"
+                  type="date"
+                  required={false}
+                  value={form.expiryDate}
+                  onChange={e => setForm({ ...form, expiryDate: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
               <button 
                 type="submit" 
                 disabled={submitting}
@@ -152,6 +170,7 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
           </form>
         </div>
       )}
+
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -243,7 +262,7 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
               <h3 className="text-lg font-bold">Edit Item: {editingItem.id}</h3>
               <button onClick={() => setEditingItem(null)} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
             </div>
-            <form onSubmit={handleEditSubmit} className="p-6">
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label="Name" required value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
                 <Input label="Category" required value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})} />
@@ -251,9 +270,27 @@ export default function Inventory({ items, onAdd, onUpdate, onDelete }) {
                 <Input label="Threshold" type="number" step="any" required value={editingItem.threshold} onChange={e => setEditingItem({...editingItem, threshold: e.target.value})} />
                 <Input label="Cost Price (₹)" type="number" step="0.01" required value={editingItem.costPrice} onChange={e => setEditingItem({...editingItem, costPrice: e.target.value})} />
                 <Input label="Selling Price (₹)" type="number" step="0.01" required value={editingItem.sellPrice} onChange={e => setEditingItem({...editingItem, sellPrice: e.target.value})} />
-                <Input label="Supplier" value={editingItem.supplier || ''} onChange={e => setEditingItem({...editingItem, supplier: e.target.value})} />
-                <Input label="Manufacture Date (Optional)" type="date" value={editingItem.manufactureDate || ''} onChange={e => setEditingItem({...editingItem, manufactureDate: e.target.value})} />
-                <Input label="Expiry Date (Optional)" type="date" value={editingItem.expiryDate || ''} onChange={e => setEditingItem({...editingItem, expiryDate: e.target.value})} />
+                <Input label="Supplier (Optional)" required={false} value={editingItem.supplier || ''} onChange={e => setEditingItem({...editingItem, supplier: e.target.value})} />
+              </div>
+
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+                <p className="text-sm font-medium text-gray-700 mb-3">Product dates <span className="font-normal text-gray-500">(optional — leave blank if not needed)</span></p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Manufacture Date"
+                    type="date"
+                    required={false}
+                    value={editingItem.manufactureDate || ''}
+                    onChange={e => setEditingItem({ ...editingItem, manufactureDate: e.target.value })}
+                  />
+                  <Input
+                    label="Expiry Date"
+                    type="date"
+                    required={false}
+                    value={editingItem.expiryDate || ''}
+                    onChange={e => setEditingItem({ ...editingItem, expiryDate: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="mt-6 flex justify-end gap-3">
                 <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">Cancel</button>

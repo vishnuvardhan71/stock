@@ -16,7 +16,7 @@ export default function Input({ label, type = "text", required = false, ...props
       <input 
         type={type} 
         required={required}
-        onKeyDown={handleKeyDown}
+        onKeyDown={type === 'number' ? handleKeyDown : undefined}
         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
         {...props} 
       />
