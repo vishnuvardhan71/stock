@@ -1,7 +1,67 @@
 @import "tailwindcss";
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-gray-50 text-slate-800 antialiased;
+    @apply bg-[#F8FAFC] text-[#0F172A] antialiased;
+    background-color: #F8FAFC;
+    color: #0F172A;
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+}
+
+@layer components {
+  .fade-in {
+    animation: fadeIn 0.32s ease;
+  }
+
+  .dashboard-card {
+    @apply bg-white rounded-[1rem] border-l-4 border-transparent shadow-sm transition-all duration-300 transform-gpu;
+  }
+
+  .dashboard-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .input-modern {
+    @apply w-full border border-[#E2E8F0] rounded-[16px] bg-white px-4 py-3 text-slate-900 placeholder-slate-400 transition duration-300 focus:outline-none focus:ring-2 focus:ring-[#27CCF5]/25 focus:border-[#27CCF5];
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-[12px] px-5 py-3 font-semibold text-white transition duration-300;
+    background-color: #27CCF5;
+  }
+
+  .btn-primary:hover {
+    background-color: #18B8E2;
+  }
+
+  .table-sticky thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #ffffff;
+  }
+
+  .table-row-hover:hover {
+    background: rgba(39, 204, 245, 0.05);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

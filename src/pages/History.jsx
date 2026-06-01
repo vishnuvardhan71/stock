@@ -7,14 +7,16 @@ export default function History({ sales, onPrint, onPreview }) {
   const sortedSales = [...sales].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Sales History</h2>
-        <span className="text-sm text-gray-500">{sales.length} records found</span>
+    <div className="bg-white rounded-[16px] border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="p-4 border-b border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-[#0F172A]">Sales History</h2>
+          <p className="text-sm text-[#64748B]">{sales.length} records found</p>
+        </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+        <table className="table-sticky w-full text-sm text-left">
+          <thead className="text-xs text-slate-500 uppercase bg-white border-b border-[#E2E8F0]">
             <tr>
               <th className="px-4 py-3">Date/Time</th>
               <th className="px-4 py-3">Bill No.</th>
@@ -27,7 +29,7 @@ export default function History({ sales, onPrint, onPreview }) {
           </thead>
           <tbody>
             {sortedSales.map(sale => (
-              <tr key={sale.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <tr key={sale.id} className="border-b border-[#E2E8F0] table-row-hover last:border-0">
                 <td className="px-4 py-3">
                   <div className="font-medium">{new Date(sale.date).toLocaleDateString()}</div>
                   <div className="text-xs text-gray-400">{new Date(sale.date).toLocaleTimeString()}</div>
@@ -45,13 +47,13 @@ export default function History({ sales, onPrint, onPreview }) {
                   <div className="flex justify-center gap-2">
                     <button 
                       onClick={() => onPreview(sale)} 
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 rounded-md text-sm hover:bg-gray-50 hover:text-indigo-600 transition-colors"
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-[#E2E8F0] rounded-2xl text-sm hover:bg-[#27CCF5]/10 hover:text-[#27CCF5] transition-colors"
                     >
                       View
                     </button>
                     <button 
                       onClick={() => onPrint(sale)} 
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 rounded-md text-sm hover:bg-gray-50 hover:text-indigo-600 transition-colors"
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-[#E2E8F0] rounded-2xl text-sm hover:bg-[#27CCF5]/10 hover:text-[#27CCF5] transition-colors"
                     >
                       <Printer className="h-4 w-4" /> Reprint
                     </button>

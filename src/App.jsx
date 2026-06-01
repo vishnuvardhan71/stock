@@ -1,8 +1,11 @@
 // DukanBook - Main App Shell with Routing & Authentication & Supabase DB Sync
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Package, ShoppingCart, History, LogOut, AlertTriangle, Info, RefreshCw } from 'lucide-react';
-import { getUniqueCategories } from './utils/categoryUtils';
+import {
+  getUniqueCategories,
+  filterItemsByCategory,
+} from './utils/categoryUtils';
 import CategoryNavMenu from './components/CategoryNavMenu';
 import './utils/helpers'; // Initialize window.storage
 
@@ -22,9 +25,15 @@ export default function App() {
   const [sales, setSales] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [categoryBrowserOpen, setCategoryBrowserOpen] = useState(false);
+  const [categoryBrowserCategory, setCategoryBrowserCategory] = useState('');
 
   const categories = getUniqueCategories(items);
+
+  const categoryBrowserItems = useMemo(
+    () => filterItemsByCategory(items, categoryBrowserCategory),
+    [items, categoryBrowserCategory]
+  );
 
   // Check auth on mount
   useEffect(() => {
@@ -102,6 +111,7 @@ export default function App() {
   }, [isAuthenticated]);
 
   const [billToPrint, setBillToPrint] = useState(null);
+  const navigate = useNavigate();
 
   const handleBillAction = (bill, autoPrint = true) => {
     setBillToPrint(bill);
@@ -259,8 +269,29 @@ export default function App() {
     { to: '/history', label: 'History', icon: History },
   ];
 
+  const openCategoryBrowser = () => {
+    setCategoryBrowserOpen(true);
+    setCategoryBrowserCategory('');
+  };
+
+  const handleBrowseCategory = (category) => {
+    setCategoryBrowserOpen(true);
+    setCategoryBrowserCategory(category);
+  };
+
+  const handleAllCategories = () => {
+    setCategoryBrowserOpen(false);
+    setCategoryBrowserCategory('');
+    navigate('/inventory');
+  };
+
+  const closeCategoryBrowser = () => {
+    setCategoryBrowserOpen(false);
+    setCategoryBrowserCategory('');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-slate-800">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-[#0F172A] fade-in">
       <style>
         {`
           @media print {
@@ -317,13 +348,15 @@ export default function App() {
       )}
 
       {/* Header / Nav */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2 text-indigo-600">
-          <Package className="h-8 w-8" />
-          <h1 className="text-2xl font-bold tracking-tight">DukanBook</h1>
+      <header className="bg-white border-b border-[#E2E8F0] px-6 py-4 flex flex-col lg:flex-row items-start lg:items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center gap-3 mb-4 lg:mb-0">
+          <Package className="h-8 w-8 text-[#27CCF5]" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">DukanBook</h1>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <nav className="flex space-x-1">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full lg:w-auto">
+          <nav className="flex flex-wrap gap-2">
             {navItems.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -332,23 +365,26 @@ export default function App() {
                   to={tab.to}
                   end={tab.to === '/'}
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    `flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium transition-all ${
                       isActive
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                        ? 'bg-[#27CCF5] text-white shadow-sm'
+                        : 'text-slate-600 hover:text-[#27CCF5] hover:bg-[#27CCF5]/10'
                     }`
                   }
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span>{tab.label}</span>
                 </NavLink>
               );
             })}
           </nav>
           <CategoryNavMenu
             categories={categories}
-            selectedCategory={categoryFilter}
-            onSelectCategory={setCategoryFilter}
+            selectedCategory={categoryBrowserCategory}
+            browserOpen={categoryBrowserOpen}
+            onSelectCategory={handleBrowseCategory}
+            onOpenCategories={openCategoryBrowser}
+            onAllCategories={handleAllCategories}
           />
           <button
             onClick={handleLogout}
@@ -363,15 +399,111 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full relative">
+        {categoryBrowserOpen && (
+          <section className="mb-6 bg-white shadow-sm rounded-3xl border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Category Browser</h2>
+                <p className="text-sm text-slate-500">
+                  Browse categories independently from the main products list.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {categoryBrowserCategory ? (
+                  <span className="text-sm text-slate-600">
+                    Showing items for <strong>{categoryBrowserCategory}</strong>
+                  </span>
+                ) : (
+                  <span className="text-sm text-slate-600">Select a category below to view its items.</span>
+                )}
+                <button
+                  type="button"
+                  onClick={closeCategoryBrowser}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)] p-5">
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-500 font-semibold">Categories</div>
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3 space-y-2 max-h-[320px] overflow-y-auto">
+                  {categories.length === 0 ? (
+                    <div className="text-sm text-slate-500">No categories available.</div>
+                  ) : (
+                    categories.map((name) => (
+                      <button
+                        type="button"
+                        key={name}
+                        onClick={() => handleBrowseCategory(name)}
+                        className={`w-full text-left rounded-2xl px-4 py-3 transition ${
+                          categoryBrowserCategory === name ? 'bg-indigo-50 text-indigo-700' : 'bg-white text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm min-h-[180px]">
+                {categoryBrowserCategory ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-base font-semibold">Items in {categoryBrowserCategory}</h3>
+                        <p className="text-sm text-slate-500">Only shown inside the category browser.</p>
+                      </div>
+                      <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
+                        {categoryBrowserItems.length} items
+                      </span>
+                    </div>
+                    {categoryBrowserItems.length === 0 ? (
+                      <div className="rounded-3xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+                        No items found for this category.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm text-left">
+                          <thead className="text-xs uppercase text-slate-500 bg-slate-50 border-b border-slate-200">
+                            <tr>
+                              <th className="px-3 py-3">Item</th>
+                              <th className="px-3 py-3">Qty</th>
+                              <th className="px-3 py-3">Category</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {categoryBrowserItems.map((item) => (
+                              <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                <td className="px-3 py-3 font-medium text-slate-900">{item.name}</td>
+                                <td className="px-3 py-3 text-slate-600">{item.qty}</td>
+                                <td className="px-3 py-3 text-slate-600">{item.category}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-3xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+                    Select a category from the list on the left to view its items in this panel.
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
         <Routes>
           <Route path="/" element={<Dashboard items={items} sales={sales} />} />
           <Route 
             path="/inventory" 
             element={
               <Inventory 
-                items={items} 
-                categoryFilter={categoryFilter}
-                onClearCategoryFilter={() => setCategoryFilter('')}
+                items={items}
+                allItems={items}
                 onAdd={handleAddItem} 
                 onUpdate={handleUpdateItem} 
                 onDelete={handleDeleteItem} 
@@ -382,7 +514,7 @@ export default function App() {
             path="/sell" 
             element={
               <Sell 
-                items={items} 
+                items={items}
                 onProcessSale={handleProcessSale}
                 onPrint={(bill) => handleBillAction(bill, true)} 
                 onPreview={(bill) => handleBillAction(bill, false)} 

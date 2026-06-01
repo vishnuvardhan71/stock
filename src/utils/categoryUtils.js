@@ -89,6 +89,20 @@ export function categoriesMatch(a, b) {
   return normalizeCategoryKey(a) === normalizeCategoryKey(b);
 }
 
+export function filterItemsByCategory(items, categoryFilter) {
+  if (!categoryFilter) return items || [];
+  return (items || []).filter((item) => categoriesMatch(item.category, categoryFilter));
+}
+
+/** Sales that include at least one product in the selected category. */
+export function filterSalesByCategory(sales, items, categoryFilter) {
+  if (!categoryFilter) return sales || [];
+  const itemIds = new Set(filterItemsByCategory(items, categoryFilter).map((i) => i.id));
+  return (sales || []).filter((sale) =>
+    (sale.items || []).some((line) => itemIds.has(line.itemId))
+  );
+}
+
 /** Group items under one header per category (case-insensitive). */
 export function groupItemsByCategory(items) {
   const canonicalByKey = new Map(

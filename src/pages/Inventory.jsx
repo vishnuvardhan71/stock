@@ -6,12 +6,11 @@ import { formatCurrency, formatDisplayDate, toDateInputValue } from '../utils/he
 import {
   getUniqueCategories,
   resolveCategoryForSave,
-  categoriesMatch,
 } from '../utils/categoryUtils';
 import Input from '../components/Input';
 import CategoryInput from '../components/CategoryInput';
 
-export default function Inventory({ items, categoryFilter = '', onClearCategoryFilter, onAdd, onUpdate, onDelete }) {
+export default function Inventory({ items, allItems = [], onAdd, onUpdate, onDelete }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showAddForm, setShowAddForm] = useState(false);
   const [search, setSearch] = useState('');
@@ -41,7 +40,7 @@ export default function Inventory({ items, categoryFilter = '', onClearCategoryF
     manufactureDate: '', expiryDate: ''
   };
 
-  const existingCategories = getUniqueCategories(items);
+  const existingCategories = getUniqueCategories(allItems.length ? allItems : items);
 
   const buildProductPayload = (data) => ({
     name: data.name,
@@ -104,39 +103,26 @@ export default function Inventory({ items, categoryFilter = '', onClearCategoryF
     if (inventoryFilter === 'low') matchesFilter = parseFloat(i.qty) > 0 && parseFloat(i.qty) < parseFloat(i.threshold);
     if (inventoryFilter === 'out') matchesFilter = parseFloat(i.qty) <= 0;
 
-    const matchesCategory =
-      !categoryFilter || categoriesMatch(i.category, categoryFilter);
-    
-    return matchesSearch && matchesFilter && matchesCategory;
+    return matchesSearch && matchesFilter;
   });
 
   return (
     <div className="space-y-6">
-      {categoryFilter && (
-        <div className="bg-violet-50 text-violet-800 px-4 py-3 rounded-lg flex justify-between items-center border border-violet-100">
-          <span>
-            Showing items in category: <strong>{categoryFilter}</strong>
-          </span>
-          <button type="button" onClick={onClearCategoryFilter} className="text-sm underline hover:text-violet-950">
-            Clear category
-          </button>
-        </div>
-      )}
       {inventoryFilter !== 'all' && (
-        <div className="bg-indigo-50 text-indigo-700 px-4 py-3 rounded-lg flex justify-between items-center border border-indigo-100">
+        <div className="bg-[#27CCF5]/10 text-[#0F172A] px-4 py-3 rounded-[16px] flex justify-between items-center border border-[#E2E8F0]">
           <span>
             Showing <strong>{inventoryFilter === 'low' ? 'Low Stock' : 'Out of Stock'}</strong> items.
           </span>
-          <button onClick={() => setInventoryFilter('all')} className="text-sm underline hover:text-indigo-900">
+          <button onClick={() => setInventoryFilter('all')} className="text-sm font-medium text-[#27CCF5] hover:text-[#1EA7D8]">
             Clear Filter
           </button>
         </div>
       )}
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-white rounded-[16px] border border-[#E2E8F0] shadow-sm p-4">
         <input 
           type="text" 
           placeholder="Search items..." 
-          className="border border-gray-300 rounded-lg px-4 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="input-modern w-full max-w-md"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -147,7 +133,7 @@ export default function Inventory({ items, categoryFilter = '', onClearCategoryF
             }
             setShowAddForm(!showAddForm);
           }}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shrink-0 ml-4"
+          className="btn-primary flex items-center gap-2 shrink-0"
         >
           {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           <span>{showAddForm ? 'Cancel' : 'Add Item'}</span>
@@ -219,8 +205,8 @@ export default function Inventory({ items, categoryFilter = '', onClearCategoryF
               }
             `}
           </style>
-          <table className="inventory-table w-full text-sm text-left">
-            <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+          <table className="inventory-table table-sticky w-full text-sm text-left">
+            <thead className="text-xs text-slate-500 uppercase bg-white border-b border-[#E2E8F0]">
               <tr>
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Name</th>
@@ -239,23 +225,23 @@ export default function Inventory({ items, categoryFilter = '', onClearCategoryF
               {filteredItems.map((item) => {
                 const margin = ((parseFloat(item.sellPrice) - parseFloat(item.costPrice)) / parseFloat(item.costPrice)) * 100;
                 let statusBadge;
-                if (parseFloat(item.qty) <= 0) statusBadge = <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Out of Stock</span>;
-                else if (parseFloat(item.qty) < parseFloat(item.threshold)) statusBadge = <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-700">Low Stock</span>;
-                else statusBadge = <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">In Stock</span>;
+                if (parseFloat(item.qty) <= 0) statusBadge = <span className="px-2 py-1 text-xs rounded-full bg-[#EF4444]/15 text-[#EF4444]">Out of Stock</span>;
+                else if (parseFloat(item.qty) < parseFloat(item.threshold)) statusBadge = <span className="px-2 py-1 text-xs rounded-full bg-[#F59E0B]/15 text-[#F59E0B]">Low Stock</span>;
+                else statusBadge = <span className="px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">In Stock</span>;
 
                 return (
                   <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{item.id}</td>
-                    <td className="px-4 py-3 font-medium">{item.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{item.category}</td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDisplayDate(item.manufactureDate)}</td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDisplayDate(item.expiryDate)}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{item.id}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{item.name}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.category}</td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatDisplayDate(item.manufactureDate)}</td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatDisplayDate(item.expiryDate)}</td>
+                    <td className="px-4 py-3 text-right text-slate-900">
                       <span className="font-medium">{item.qty}</span>
                     </td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(item.costPrice)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(item.sellPrice)}</td>
-                    <td className={`px-4 py-3 text-right font-medium ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(item.costPrice)}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatCurrency(item.sellPrice)}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${margin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                       {isFinite(margin) ? margin.toFixed(1) + '%' : '-'}
                     </td>
                     <td className="px-4 py-3">{statusBadge}</td>
@@ -267,11 +253,11 @@ export default function Inventory({ items, categoryFilter = '', onClearCategoryF
                             manufactureDate: toDateInputValue(item.manufactureDate),
                             expiryDate: toDateInputValue(item.expiryDate)
                           })}
-                          className="p-1 text-indigo-600 hover:bg-indigo-50 rounded border border-transparent hover:border-indigo-200"
+                          className="p-2 text-[#27CCF5] hover:bg-[#27CCF5]/10 rounded-2xl border border-transparent hover:border-[#27CCF5]/20 transition"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button onClick={() => handleDelete(item.id)} className="p-1 text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200">
+                        <button onClick={() => handleDelete(item.id)} className="p-2 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-2xl border border-transparent hover:border-[#EF4444]/20 transition">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>

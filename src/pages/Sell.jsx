@@ -19,10 +19,16 @@ export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
   const [submitting, setSubmitting] = useState(false);
 
   const categories = getUniqueCategories(items);
-  const availableItems = items.filter(i => {
+  const availableItems = items.filter((i) => {
     if (selectedCategory && !categoriesMatch(i.category, selectedCategory)) return false;
     return true;
   });
+
+  useEffect(() => {
+    setSelectedItemId('');
+    setSellQty('');
+    setSellPrice('');
+  }, [selectedCategory]);
 
   const handleCategoryChange = (e) => {
     setSelectedCategory(e.target.value);
@@ -130,11 +136,11 @@ export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 fade-in">
       {/* Left Column: Form */}
       <div className="lg:col-span-5 space-y-6">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4 border-b pb-2">Add to Bill</h2>
+        <div className="bg-white p-5 rounded-[16px] border border-[#E2E8F0] shadow-sm">
+          <h2 className="text-lg font-semibold mb-4 border-b border-[#E2E8F0] pb-2">Add to Bill</h2>
           <form onSubmit={handleAddToCart} className="space-y-4">
             <Input label="Customer Name" value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Walk-in Customer" />
             
@@ -142,7 +148,7 @@ export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm"
+                  className="input-modern"
                   value={selectedCategory}
                   onChange={handleCategoryChange}
                 >
@@ -156,7 +162,7 @@ export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Select Item</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm"
+                  className="input-modern"
                   value={selectedItemId}
                   onChange={e => setSelectedItemId(e.target.value)}
                   required
@@ -176,9 +182,9 @@ export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
             </div>
             
             {selectedItem && (
-              <div className="p-3 bg-indigo-50 text-indigo-800 rounded-lg text-sm flex justify-between items-center border border-indigo-100 animate-pulse">
+              <div className="p-3 bg-[#27CCF5]/10 text-[#0F172A] rounded-[16px] text-sm flex justify-between items-center border border-[#E2E8F0] animate-pulse">
                 <span>Available Stock:</span>
-                <span className="font-bold">{getAvailableStock(selectedItem)}</span>
+                <span className="font-semibold text-[#0F172A]">{getAvailableStock(selectedItem)}</span>
               </div>
             )}
 
@@ -190,7 +196,7 @@ export default function Sell({ items, onProcessSale, onPrint, onPreview }) {
             <button 
               type="submit" 
               disabled={!selectedItem || getAvailableStock(selectedItem) <= 0} 
-              className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
+              className="btn-primary w-full disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed"
             >
               Add to Bill
             </button>
