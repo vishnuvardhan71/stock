@@ -82,6 +82,13 @@ export const dbService = {
   async addProduct(product) {
     if (!supabase) throw new Error("Supabase is not configured.");
     const dbItem = mapProductToDB(product);
+    
+    // Explicitly associate the record with the authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      dbItem.user_id = user.id;
+    }
+
     const { data, error } = await supabase
       .from('products')
       .insert([dbItem])
@@ -137,6 +144,13 @@ export const dbService = {
 
     // 1. Insert the sale bill
     const dbSale = mapSaleToDB(sale);
+    
+    // Explicitly associate the record with the authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      dbSale.user_id = user.id;
+    }
+
     const { data: saleData, error: saleError } = await supabase
       .from('sales')
       .insert([dbSale])
@@ -151,19 +165,22 @@ export const dbService = {
         .from('products')
         .select('qty')
         .eq('id', item.itemId)
-        .single();
+        .maybeSingle();
 
       if (prodError) throw prodError;
 
-      const currentQty = parseFloat(prodData.qty) || 0;
-      const newQty = Math.max(0, currentQty - parseFloat(item.qty));
+      // Only update the quantity if the product exists
+      if (prodData) {
+        const currentQty = parseFloat(prodData.qty) || 0;
+        const newQty = Math.max(0, currentQty - parseFloat(item.qty));
 
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ qty: newQty })
-        .eq('id', item.itemId);
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ qty: newQty })
+          .eq('id', item.itemId);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      }
     }
 
     return mapSaleToClient(saleData[0]);

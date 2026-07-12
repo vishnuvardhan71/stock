@@ -9,7 +9,7 @@ import {
 import CategoryNavMenu from './components/CategoryNavMenu';
 import './utils/helpers'; // Initialize window.storage
 
-import { isSupabaseConfigured } from './utils/supabaseClient';
+import { supabase, isSupabaseConfigured } from './utils/supabaseClient';
 import { dbService } from './utils/dbService';
 
 import BillModal from './components/BillModal';
@@ -35,12 +35,33 @@ export default function App() {
     [items, categoryBrowserCategory]
   );
 
-  // Check auth on mount
+  // Check auth on mount and handle state changes
   useEffect(() => {
-    const auth = window.storage.sessionGet('db_auth');
-    if (auth && auth.loggedIn) {
-      setIsAuthenticated(true);
+    if (!isSupabaseConfigured) {
+      const auth = window.storage.sessionGet('db_auth');
+      if (auth && auth.loggedIn) {
+        setIsAuthenticated(true);
+      }
+      return;
     }
+
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // Subscribe to auth state updates
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+      if (event === 'SIGNED_OUT') {
+        setItems([]);
+        setSales([]);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadData = async () => {
@@ -123,12 +144,22 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (!window.confirm('Are you sure you want to log out?')) {
       return;
     }
-    window.storage.sessionRemove('db_auth');
-    setIsAuthenticated(false);
+    if (!isSupabaseConfigured) {
+      window.storage.sessionRemove('db_auth');
+      setIsAuthenticated(false);
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error signing out:", err);
+      setError("Logout failed: " + err.message);
+    }
   };
 
   // DATABASE WRAPPER MUTATIONS (Passed to Child Components)
